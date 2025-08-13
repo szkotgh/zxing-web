@@ -15,4 +15,4 @@ def error_handler(e):
     return redirect('/')
 
 if '__main__' == __name__:
-    app.run('localhost', 12081)
+    app.run('localhost', 80)

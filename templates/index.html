@@ -30,6 +30,7 @@
     const logContainer = document.getElementById('log');
     let reader = null;
     let running = false;
+    let lastScan = null;
 
     // Beep sound function
     function beep() {
@@ -68,6 +69,13 @@
         textContainer.textContent = text;
       }
 
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('it-IT', { hour12: false });
+      const timeElem = document.createElement('div');
+      timeElem.className = 'text-xs text-gray-400 mt-2 w-full text-left';
+      timeElem.textContent = timeStr;
+      textContainer.appendChild(timeElem);
+
       const btn = document.createElement('button');
       btn.className = 'ml-4 w-16 h-8 bg-blue-600 hover:bg-blue-700 rounded text-sm flex-shrink-0';
       btn.textContent = '복사';
@@ -77,8 +85,12 @@
 
       card.appendChild(textContainer);
       card.appendChild(btn);
-      logContainer.appendChild(card);
-      logContainer.scrollTop = logContainer.scrollHeight;
+
+      if (logContainer.firstChild) {
+        logContainer.insertBefore(card, logContainer.firstChild);
+      } else {
+        logContainer.appendChild(card);
+      }
     }
 
     async function startCamera(){
@@ -98,8 +110,11 @@
         reader.decodeFromVideoDevice(firstDeviceId, video, (result, err, controls) => {
           if (!running) { controls.stop(); return; }
           if (result) {
+            const scanText = result.getText();
+            if (scanText === lastScan) return;
+            lastScan = scanText;
             beep();
-            addLog(result.getText());
+            addLog(scanText);
           }
         });
       } catch (err) {

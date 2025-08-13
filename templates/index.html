@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>카메라 바코드 인식</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .half-height {
+      height: 50%;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white">
+  <div class="half-height flex items-center justify-center bg-black relative">
+    <video id="video" class="w-full h-full object-cover" playsinline autoplay></video>
+  </div>
+
+  <div class="half-height overflow-y-auto p-4 space-y-3" id="log"></div>
+
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <script>
+    const video = document.getElementById('video');
+    const logContainer = document.getElementById('log');
+    let reader = null;
+    let running = false;
+
+    // Beep sound function
+    function beep() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 1000;
+      gain.gain.value = 0.2;
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start();
+      setTimeout(() => {
+        oscillator.stop();
+        ctx.close();
+      }, 120); // 120ms beep
+    }
+
+    function addLog(text){
+      const card = document.createElement('div');
+      card.className = 'bg-gray-800 rounded-lg p-4 flex justify-between items-center';
+
+      const textContainer = document.createElement('div');
+      textContainer.className = 'break-words flex-1';
+
+      // re
+      if (/^https?:\/\//.test(text)) {
+        const link = document.createElement('a');
+        link.href = text;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'underline text-blue-400 hover:text-blue-500';
+        link.textContent = text;
+        textContainer.appendChild(link);
+      } else {
+        textContainer.textContent = text;
+      }
+
+      const btn = document.createElement('button');
+      btn.className = 'ml-4 w-16 h-8 bg-blue-600 hover:bg-blue-700 rounded text-sm flex-shrink-0';
+      btn.textContent = '복사';
+      btn.onclick = async () => {
+        await navigator.clipboard.writeText(text);
+      };
+
+      card.appendChild(textContainer);
+      card.appendChild(btn);
+      logContainer.appendChild(card);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    async function startCamera(){
+      try {
+        const { BrowserMultiFormatReader } = ZXing;
+        reader = new BrowserMultiFormatReader();
+        running = true;
+        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        if (!videoDevices.length) {
+          addLog('오류: 카메라를 찾지 못했습니다. 카메라를 키셨나요.');
+          return;
+        }
+        const firstDeviceId = videoDevices[0].deviceId;
+
+        reader.decodeFromVideoDevice(firstDeviceId, video, (result, err, controls) => {
+          if (!running) { controls.stop(); return; }
+          if (result) {
+            beep();
+            addLog(result.getText());
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        addLog('오류: 카메라 연결 실패. 권한을 확인하셨나요.');
+      }
+    }
+
+    (async ()=>{
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+        startCamera();
+      } catch (e) {
+        console.error(e);
+        addLog('오류: 카메라 연결 실패.');
+      }
+    })();
+  </script>
+</body>
+</html>
